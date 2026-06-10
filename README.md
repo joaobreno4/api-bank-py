@@ -1,72 +1,78 @@
 # api-bank-py
 
-REST API for a banking system built with Node.js, TypeScript, and SQLite. The project follows the MVC pattern and SOLID principles, with a layered architecture that separates routing, business logic, data access, and contracts.
+API REST para um sistema bancário construída com Node.js, TypeScript e SQLite. O projeto segue o padrão MVC e os princípios SOLID, com uma arquitetura em camadas que separa roteamento, regras de negócio, acesso a dados e contratos.
 
 ---
 
-## Table of Contents
+## Autor
 
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Business Rules](#business-rules)
-- [API Reference](#api-reference)
-- [Getting Started](#getting-started)
-- [Running Tests](#running-tests)
+**João Breno**
 
 ---
 
-## Tech Stack
+## Sumário
 
-| Layer | Technology |
+- [Tecnologias](#tecnologias)
+- [Arquitetura](#arquitetura)
+- [Estrutura de Pastas](#estrutura-de-pastas)
+- [Regras de Negócio](#regras-de-negócio)
+- [Referência da API](#referência-da-api)
+- [Como Executar](#como-executar)
+- [Testes](#testes)
+
+---
+
+## Tecnologias
+
+| Camada | Tecnologia |
 |---|---|
 | Runtime | Node.js 24 |
-| Language | TypeScript 6 (strict mode) |
+| Linguagem | TypeScript 6 (modo strict) |
 | Framework | Express 5 |
-| Database | SQLite via better-sqlite3 |
-| Testing | Vitest + @vitest/coverage-v8 |
-| Dev server | ts-node + nodemon |
+| Banco de dados | SQLite via better-sqlite3 |
+| Testes | Vitest + @vitest/coverage-v8 |
+| Servidor de dev | ts-node + nodemon |
 
 ---
 
-## Architecture
+## Arquitetura
 
-The project is organized into four layers, each with a single responsibility:
+O projeto é organizado em quatro camadas, cada uma com uma única responsabilidade:
 
-**Interfaces** define the contracts that domain entities must implement (`ICliente`) and the shared return types used across layers (`IResultadoSaque`).
+**Interfaces** definem os contratos que as entidades de domínio devem implementar (`ICliente`) e os tipos de retorno compartilhados entre as camadas (`IResultadoSaque`).
 
-**Models** represent the domain entities (`PessoaFisica`, `PessoaJuridica`). Each model holds state, enforces low-level invariants (positive values), and exposes a `toDatabase()` method that maps camelCase properties back to the snake_case schema expected by SQLite.
+**Models** representam as entidades de domínio (`PessoaFisica`, `PessoaJuridica`). Cada model mantém o estado, aplica validações de baixo nível (valores positivos) e expõe um método `toDatabase()` que converte as propriedades em camelCase de volta para o schema snake_case esperado pelo SQLite.
 
-**Services** contain all business logic: category assignment on creation, withdrawal fee calculation by category, limit enforcement, and persistence via prepared statements. Services throw typed errors (`NotFoundError`, `LimitExceededError`, `SaldoInsuficienteError`) that controllers translate into HTTP status codes.
+**Services** contêm toda a lógica de negócio: atribuição de categoria na criação, cálculo de taxa de saque por categoria, validação de limites e persistência via prepared statements. Os services lançam erros tipados (`NotFoundError`, `LimitExceededError`, `SaldoInsuficienteError`) que os controllers traduzem em status HTTP.
 
-**Controllers** are thin HTTP adapters. They parse and validate request parameters, delegate to the corresponding service, and return structured JSON responses. A shared `handleError` utility maps error types to status codes, keeping that logic in one place.
+**Controllers** são adaptadores HTTP. Fazem o parse e a validação dos parâmetros da requisição, delegam ao service correspondente e retornam respostas JSON estruturadas. Um utilitário compartilhado `handleError` centraliza o mapeamento de tipos de erro para status HTTP.
 
 ```
-Request
+Requisição
   └── Router (routes.ts)
-        └── Controller  — parse input, handle HTTP
-              └── Service — business rules, DB persistence
-                    └── Model — entity state, low-level validation
+        └── Controller  — parse do input, resposta HTTP
+              └── Service — regras de negócio, persistência
+                    └── Model — estado da entidade, validações de baixo nível
 ```
 
 ---
 
-## Project Structure
+## Estrutura de Pastas
 
 ```
 src/
 ├── __tests__/
-│   └── sacar.spec.ts          # Unit tests for withdrawal rules
+│   └── sacar.spec.ts          # Testes unitários das regras de saque
 ├── controllers/
 │   ├── PessoaFisicaController.ts
 │   └── PessoaJuridicaController.ts
 ├── database/
-│   └── connection.ts          # SQLite singleton, WAL mode, table initialization
+│   └── connection.ts          # Singleton SQLite, modo WAL, criação das tabelas
 ├── errors/
-│   └── AppError.ts            # Typed error classes
+│   └── AppError.ts            # Classes de erro tipadas
 ├── interfaces/
-│   ├── ICliente.ts            # Client contract + Categoria type
-│   └── IResultadoSaque.ts     # Withdrawal result shape
+│   ├── ICliente.ts            # Contrato de cliente e tipo Categoria
+│   └── IResultadoSaque.ts     # Formato de retorno do saque
 ├── models/
 │   ├── PessoaFisica.ts
 │   └── PessoaJuridica.ts
@@ -74,69 +80,69 @@ src/
 │   ├── PessoaFisicaService.ts
 │   └── PessoaJuridicaService.ts
 ├── utils/
-│   └── handleError.ts         # Error-to-HTTP-status mapping
+│   └── handleError.ts         # Mapeamento erro -> status HTTP
 ├── routes.ts
 └── server.ts
 ```
 
 ---
 
-## Business Rules
+## Regras de Negócio
 
-### Category Assignment
+### Categorização
 
-Category is determined automatically at creation time based on monthly income or revenue. It cannot be set manually.
+A categoria é atribuída automaticamente no momento do cadastro com base na renda ou receita mensal. Não pode ser definida manualmente.
 
-| Category | Pessoa Fisica (renda_mensal) | Pessoa Juridica (receita_mensal) |
+| Categoria | Pessoa Física (renda_mensal) | Pessoa Jurídica (receita_mensal) |
 |---|---|---|
-| comum | up to R$ 2,000.00 | up to R$ 10,000.00 |
-| super | R$ 2,000.01 to R$ 5,000.00 | R$ 10,000.01 to R$ 50,000.00 |
-| premium | above R$ 5,000.00 | above R$ 50,000.00 |
+| comum | até R$ 2.000,00 | até R$ 10.000,00 |
+| super | R$ 2.000,01 a R$ 5.000,00 | R$ 10.000,01 a R$ 50.000,00 |
+| premium | acima de R$ 5.000,00 | acima de R$ 50.000,00 |
 
-### Withdrawal
+### Saque
 
-Two validations run in order before any debit occurs:
+Duas validações ocorrem em sequência antes de qualquer débito:
 
-1. **Limit per operation** — the requested amount may not exceed the type-specific cap.
-2. **Sufficient balance** — the account must hold enough to cover the full amount including the fee.
+1. **Limite por operação** — o valor solicitado não pode ultrapassar o teto definido para o tipo de cliente.
+2. **Saldo suficiente** — a conta deve ter saldo para cobrir o valor total, incluindo a taxa.
 
-| Rule | Pessoa Fisica | Pessoa Juridica |
+| Regra | Pessoa Física | Pessoa Jurídica |
 |---|---|---|
-| Max per withdrawal | R$ 1,000.00 | R$ 10,000.00 |
-| Fee — comum | 0.4% | 0.4% |
-| Fee — super | 0.1% | 0.1% |
-| Fee — premium | exempt | exempt |
+| Limite máximo por saque | R$ 1.000,00 | R$ 10.000,00 |
+| Taxa — comum | 0,4% | 0,4% |
+| Taxa — super | 0,1% | 0,1% |
+| Taxa — premium | isento | isento |
 
-The fee is applied on top of the requested amount. For example, a R$ 500.00 withdrawal by a `comum` client debits R$ 502.00 from the balance.
+A taxa é cobrada sobre o valor solicitado e somada ao débito. Por exemplo, um saque de R$ 500,00 por um cliente `comum` debita R$ 502,00 do saldo.
 
-### Error Responses
+### Respostas de Erro
 
-| Situation | HTTP Status |
+| Situação | Status HTTP |
 |---|---|
-| Requested amount exceeds limit | 400 |
-| Invalid parameter (non-numeric, negative) | 400 |
-| Insufficient balance | 422 |
-| Client ID not found | 404 |
-| Unexpected server error | 500 |
+| Valor acima do limite permitido | 400 |
+| Parâmetro inválido (não numérico, negativo) | 400 |
+| Saldo insuficiente | 422 |
+| ID do cliente não encontrado | 404 |
+| Erro inesperado no servidor | 500 |
 
 ---
 
-## API Reference
+## Referência da API
 
-All routes are prefixed with `/api`.
+Todas as rotas possuem o prefixo `/api`.
 
-### Pessoa Fisica
+### Pessoa Física
 
-| Method | Path | Description |
+| Método | Caminho | Descrição |
 |---|---|---|
-| POST | `/clientes/pf` | Create a new individual client |
-| GET | `/clientes/pf` | List all individual clients |
-| POST | `/clientes/pf/:id/sacar` | Withdraw from an individual account |
-| GET | `/clientes/pf/:id/extrato` | Get account statement |
+| POST | `/clientes/pf` | Cadastrar um novo cliente pessoa física |
+| GET | `/clientes/pf` | Listar todos os clientes pessoa física |
+| POST | `/clientes/pf/:id/sacar` | Realizar saque em conta pessoa física |
+| GET | `/clientes/pf/:id/extrato` | Consultar extrato da conta |
 
 #### POST /clientes/pf
 
-Request body:
+Corpo da requisição:
 
 ```json
 {
@@ -148,7 +154,7 @@ Request body:
 }
 ```
 
-Response `201`:
+Resposta `201`:
 
 ```json
 {
@@ -165,13 +171,13 @@ Response `201`:
 
 #### POST /clientes/pf/:id/sacar
 
-Request body:
+Corpo da requisição:
 
 ```json
 { "valor": 500 }
 ```
 
-Response `200`:
+Resposta `200`:
 
 ```json
 {
@@ -183,7 +189,7 @@ Response `200`:
 }
 ```
 
-Response `400` (limit exceeded):
+Resposta `400` (limite excedido):
 
 ```json
 {
@@ -191,7 +197,7 @@ Response `400` (limit exceeded):
 }
 ```
 
-Response `422` (insufficient balance):
+Resposta `422` (saldo insuficiente):
 
 ```json
 {
@@ -201,18 +207,18 @@ Response `422` (insufficient balance):
 
 ---
 
-### Pessoa Juridica
+### Pessoa Jurídica
 
-| Method | Path | Description |
+| Método | Caminho | Descrição |
 |---|---|---|
-| POST | `/clientes/pj` | Create a new corporate client |
-| GET | `/clientes/pj` | List all corporate clients |
-| POST | `/clientes/pj/:id/sacar` | Withdraw from a corporate account |
-| GET | `/clientes/pj/:id/extrato` | Get account statement |
+| POST | `/clientes/pj` | Cadastrar um novo cliente pessoa jurídica |
+| GET | `/clientes/pj` | Listar todos os clientes pessoa jurídica |
+| POST | `/clientes/pj/:id/sacar` | Realizar saque em conta pessoa jurídica |
+| GET | `/clientes/pj/:id/extrato` | Consultar extrato da conta |
 
 #### POST /clientes/pj
 
-Request body:
+Corpo da requisição:
 
 ```json
 {
@@ -224,7 +230,7 @@ Request body:
 }
 ```
 
-Response `201`:
+Resposta `201`:
 
 ```json
 {
@@ -241,52 +247,52 @@ Response `201`:
 
 ---
 
-## Getting Started
+## Como Executar
 
-**Prerequisites:** Node.js 18 or higher, npm.
+**Pré-requisitos:** Node.js 18 ou superior, npm.
 
 ```bash
-# Clone the repository
+# Clonar o repositório
 git clone https://github.com/joaobreno4/api-bank-py.git
 cd api-bank-py
 
-# Install dependencies
+# Instalar as dependências
 npm install
 
-# Start the development server (hot reload)
+# Iniciar o servidor de desenvolvimento (com hot reload)
 npm run dev
 
-# Or compile and run the production build
+# Ou compilar e executar em modo de produção
 npm run build
 npm start
 ```
 
-The server starts on port `3000` by default. Set the `PORT` environment variable to override.
+O servidor inicia na porta `3000` por padrão. Defina a variável de ambiente `PORT` para alterar.
 
-The SQLite database file is created automatically at `data/bank.db` on first run. Tables are created with `CREATE TABLE IF NOT EXISTS`, so initialization is safe to run multiple times.
+O arquivo do banco de dados SQLite é criado automaticamente em `data/bank.db` na primeira execução. As tabelas são criadas com `CREATE TABLE IF NOT EXISTS`, portanto a inicialização é segura para execuções repetidas.
 
 ---
 
-## Running Tests
+## Testes
 
 ```bash
-# Run all tests once
+# Executar todos os testes uma vez
 npm test
 
-# Watch mode during development
+# Modo watch durante o desenvolvimento
 npm run test:watch
 
-# Coverage report
+# Relatório de cobertura
 npm run test:coverage
 ```
 
-The test suite uses Vitest with `vi.hoisted` to mock the SQLite connection module. This keeps the tests pure unit tests — no database file is created or read during the test run.
+A suíte de testes utiliza Vitest com `vi.hoisted` para mockar o módulo de conexão com o SQLite. Isso mantém os testes como testes unitários puros — nenhum arquivo de banco de dados é criado ou lido durante a execução.
 
-### Test Coverage
+### Cenários Cobertos
 
-| Scenario | Assertion |
+| Cenário | Verificação |
 |---|---|
-| R$ 500 withdrawal — comum | fee of R$ 2.00 applied (0.4%), R$ 502.00 debited |
-| R$ 1,500 withdrawal — PF | `LimitExceededError` thrown before any DB call |
-| R$ 5,000 withdrawal — PJ with R$ 2,000 balance | `SaldoInsuficienteError` thrown, no UPDATE executed |
-| R$ 500 withdrawal — premium | zero fee, exactly R$ 500.00 debited |
+| Saque de R$ 500 — comum | taxa de R$ 2,00 aplicada (0,4%), R$ 502,00 debitados |
+| Saque de R$ 1.500 — PF | `LimitExceededError` lançado antes de qualquer chamada ao banco |
+| Saque de R$ 5.000 — PJ com saldo de R$ 2.000 | `SaldoInsuficienteError` lançado, nenhum UPDATE executado |
+| Saque de R$ 500 — premium | taxa zero, exatamente R$ 500,00 debitados |
